@@ -1,11 +1,14 @@
 import { Image } from 'expo-image';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   StyleSheet,
   useWindowDimensions,
   View,
   type ListRenderItem,
+  TouchableOpacity,
+  Modal,
+  Pressable,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -43,17 +46,35 @@ export default function GalleryScreen() {
     [width, columns]
   );
 
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const handleImagePress = useCallback((imageUri: string) => {
+    setSelectedImage(imageUri);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedImage(null);
+  }, []);
+
   const renderItem: ListRenderItem<number> = useCallback(
-    ({ item }) => (
-      <View style={[styles.itemWrapper, { width: itemWidth, marginHorizontal: SPACING / 2 }]}>
-        <Image
-          source={GALLERY_IMAGES[item % GALLERY_IMAGES.length]}
-          style={[styles.image, { width: itemWidth, aspectRatio: 1 }]}
-          contentFit="cover"
-        />
-      </View>
-    ),
-    [itemWidth]
+    ({ item }) => {
+      const imageSource = GALLERY_IMAGES[item % GALLERY_IMAGES.length];
+      return (
+        <View style={[styles.itemWrapper, { width: itemWidth, marginHorizontal: SPACING / 2 }]}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => handleImagePress(imageSource.uri)}
+          >
+            <Image
+              source={imageSource}
+              style={[styles.image, { width: itemWidth, aspectRatio: 1 }]}
+              contentFit="cover"
+            />
+          </TouchableOpacity>
+        </View>
+      );
+    },
+    [itemWidth, handleImagePress]
   );
 
   const data = useMemo(() => GALLERY_IMAGES.map((_, i) => i), []);
@@ -74,6 +95,30 @@ export default function GalleryScreen() {
         renderItem={renderItem}
         contentContainerStyle={[styles.listContent, { paddingHorizontal: SPACING }]}
       />
+
+      <Modal
+        visible={selectedImage !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseModal}
+      >
+        <View style={styles.modalContainer}>
+          <Pressable style={styles.modalBackdrop} onPress={handleCloseModal}>
+            <View style={styles.modalContent}>
+              {selectedImage && (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.zoomedImage}
+                  contentFit="contain"
+                />
+              )}
+            </View>
+          </Pressable>
+          <TouchableOpacity style={styles.closeButton} onPress={handleCloseModal}>
+            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -94,5 +139,40 @@ const styles = StyleSheet.create({
   },
   image: {
     borderRadius: 8,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  zoomedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
   },
 });
